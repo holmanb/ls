@@ -16,8 +16,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
 
-void print_files(int num, struct dirent **namelist, int args);
+void print_files(int num, struct dirent **namelist, int args, char *directory, char *buffer);
 int get_args(int argc, char *argv[], char *directory);
 int validate_args(int argc, char *argv[]);
 int iterate_args(int argc, char *argv[], char *directory);
@@ -29,12 +31,13 @@ int main(int argc, char *argv[])
    struct dirent **namelist;
    int n=-1;
    int args=0;
-   char directory[LENGTH];
+   char directory[LENGTH]={0};
+   char str_buffer[LENGTH];
    directory[0] = '\0';
 
    // PROF requested ls to default to -a behavior 
    // comment out next line for standard ls behavior
-   //args=DEFAULT_ARGS;
+   args=DEFAULT_ARGS;
 
    // Validate arguments
    if(validate_args(argc, argv)){
@@ -46,38 +49,56 @@ int main(int argc, char *argv[])
    args = get_args(argc, argv, directory) | args; 
 
    // do scandir and print out the directory
-   n = scandir(directory, &namelist, NULL, alphasort);
-   printf("scandir error code:%d\n", n);
+   n=scandir(directory, &namelist, NULL, alphasort); 
    if (n < 0){
+	printf("directory: %s\n", directory);
        perror("scandir");
    }else {
 	printf("Directory listing of %s\n", directory);
-	printf("Name\n");
-	print_files(n, namelist, args);
+	printf("Size\tName\n");
+	print_files(n, namelist, args, directory,str_buffer);
    }
    return 0;
 }
 
 
 // prints out each file
-void print_files(int num, struct dirent **namelist, int args){
+void print_files(int num, struct dirent **namelist, int args, char *directory, char *buffer){
 
 	// Base case
 	if(!num) return;	 	
 
-	print_files(--num, namelist, args);	
+	print_files(--num, namelist, args, directory, buffer);	
 
 	// Skip hidden files unless -a
 	int hidden = is_hidden_file(namelist[num]->d_name);		
 
+	// concatenate filename and filepath
+	strcpy(buffer, directory);		
+	strcat(buffer, "/");
+	strcat(buffer, namelist[num]->d_name);
+	struct stat stats;
+
 	// arg -a
 	int print_all = args&2;
-	if(print_all)
-		printf("%s\n", namelist[num]->d_name);
-
+	if(print_all){
+		if(lstat(buffer, &stats)==1){
+			printf("%s\n", strerror(errno));
+		}
+		else{
+			printf("%u\t%s\n", stats.st_size, namelist[num]->d_name);
+		}
+	}
 	// only print unhidden files 
-	else if(!hidden)
-		printf("%s\n", namelist[num]->d_name);
+	else if(!hidden){
+		if(lstat(buffer, &stats)==1){
+			printf("%s\n", strerror(errno));
+		}
+		else{
+			printf("%u\t%s\n", stats.st_size, namelist[num]->d_name);
+		}
+	}
+		//printf("%s\n", namelist[num]->d_name);
 	
 	free(namelist[num]);
 }
@@ -103,6 +124,7 @@ int get_args_iter(int argc, char *argv[], char *directory){
    // if length == 1, no args passed 
    if(argc == 1){
 	directory[0] = '.';
+	directory[1] = '\n';
 	return 0;
    }
     
@@ -133,9 +155,10 @@ int get_args_iter(int argc, char *argv[], char *directory){
 		}
 	}
    }
-   if(!directory_found)
+   if(!directory_found){
 	directory[0]='.';
-
+	directory[1]='\0';
+   }
    return args;
 } 
 
@@ -153,7 +176,7 @@ int get_args(int argc, char *argv[], char *directory){
     
    // For this simple program, the only non-flag is the distination to ls
    args = iterate_args(argc, argv, directory);
-   //printf("args found:%d", args);
+   printf("args found:%d", args);
    if(!directory[0])
 	directory[0]='.';
 
