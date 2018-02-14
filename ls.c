@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
    }else{
 
 	printf("Directory listing of %s\n", directory);
-	printf("Size\tName\n");
+	printf("Size\tName");
 	ls(directory,namelist, args);
    }
    return 0;
@@ -91,32 +91,50 @@ int ls(char *directory, struct dirent **namelist, int args){
 		if(lstat(directory, &stat_struct)==-1){
 
 			// This is not a filename or location, 
-			printf("%s :%s\n", strerror(errno), directory);
+			printf("ls() error: [%s] directory[%s]\n", strerror(errno), directory);
 			return -1;
 		}else{
 			// a single file was passed in
-			printf("%lu\t%s\n ", stat_struct.st_size, directory);
+			printf("single file in ls(): %lu\t%s\n ", stat_struct.st_size, directory);
 		  return -1;
 		}
 	}
-	char  directory_buffer[LENGTH]={0}, names[LENGTH*32]={0};
+	printf("\n%s\n", directory);
+	char  directory_buffer[LENGTH]={'\0'}, names[LENGTH*32]={'\0'};
 	int num_name=0;
+
 	num_name = print_files(n, namelist, args, directory,str_buffer, names, num_name);
 
 	// Getting the name of the directory
 	if(args&ARG_R){	
 
-		printf("\n%s\n", names);
+		//printf("\nnames: {%s}\nnum_name:[%d] \n", names,num_name);
 		int i=0,j=0;
+
+		//printf("did it skip0? %d \n",num_name);
+		int quitflag=0;
 		while(num_name--)
 		{
+			//printf("did it skip1? %d \n",num_name);	
 			j=0;
 			while(names[i]!='\n'){
+
 				directory_buffer[j++]=names[i++];
 			}
-			directory_buffer[++i]='\0';
-			ls(directory_buffer, namelist, args);
+			i++;
+			directory_buffer[j++]='\0';
+			//printf("dir buffer[%s], args[%d]\n",directory_buffer, args);
+			
+			if(strcmp(names,"")){
+				ls(directory_buffer, namelist, args);
+			}else if(names!=""){
+				printf("names was empty, skipping it, num_name=%d\n",num_name);
+			}else{
+				printf("names was null, skipping it\n");
+			}
+			//printf("did it skip2? %d \n",num_name);
 		}
+		//printf("did it skip3? %d \n",num_name);
 	}
 	return 0;
 }
