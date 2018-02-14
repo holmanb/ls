@@ -105,26 +105,26 @@ int ls(char *directory, struct dirent **namelist, int args){
 
 	num_name = print_files(n, namelist, args, directory,str_buffer, names, num_name);
 
-	// Getting the name of the directory
+	// Getting the name of the directory for recursive call
 	if(args&ARG_R){	
 
-		//printf("\nnames: {%s}\nnum_name:[%d] \n", names,num_name);
 		int i=0,j=0;
 
-		//printf("did it skip0? %d \n",num_name);
 		int quitflag=0;
+
+		// Iterate through each name in names
 		while(num_name--)
 		{
-			//printf("did it skip1? %d \n",num_name);	
+			// Get the name from the buffer
 			j=0;
 			while(names[i]!='\n'){
 
 				directory_buffer[j++]=names[i++];
 			}
 			i++;
-			directory_buffer[j++]='\0';
-			//printf("dir buffer[%s], args[%d]\n",directory_buffer, args);
+			directory_buffer[j]='\0';
 			
+			// recursive walk through filesystem
 			if(strcmp(names,"")){
 				ls(directory_buffer, namelist, args);
 			}else if(names!=""){
@@ -132,9 +132,7 @@ int ls(char *directory, struct dirent **namelist, int args){
 			}else{
 				printf("names was null, skipping it\n");
 			}
-			//printf("did it skip2? %d \n",num_name);
 		}
-		//printf("did it skip3? %d \n",num_name);
 	}
 	return 0;
 }
@@ -150,7 +148,10 @@ int print_files(int num, struct dirent **namelist, int args, char *directory, ch
 
 	// concatenate filename and filepath
 	strcpy(buffer, directory);		
-	strcat(buffer, "/");
+
+	// skip concattenating / if the last char on the buffer is / (avoids //<filename>
+	if(!(buffer && *buffer && buffer[strlen(buffer) - 1] == '/')) 
+		strcat(buffer, "/");
 	strcat(buffer, namelist[num]->d_name);
 	strcat(buffer, "\0");
 
