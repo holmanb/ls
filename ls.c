@@ -67,12 +67,12 @@ int main(int argc, char *argv[])
 		return -1;
 	}else{
 		// a single file was passed in
-		printf("Directory listing of %s\n", directory);
 		printf("Size\tName\n");
 		printf("%lu\t%s\n ", stat_struct.st_size, directory);
 	}
    }else{
-
+	
+	// This is where the listing of directories begins
 	printf("Directory listing of %s\n", directory);
 	printf("Size\tName");
 	ls(directory,namelist, args);
@@ -99,18 +99,20 @@ int ls(char *directory, struct dirent **namelist, int args){
 		  return -1;
 		}
 	}
+
+	// This is the subdirectory name, before the listing of its subdirectories
 	printf("\n%s\n", directory);
 	char  directory_buffer[LENGTH]={'\0'}, names[LENGTH*32]={'\0'};
 	int num_name=0;
 
+	// Print the file names!
 	num_name = print_files(n, namelist, args, directory,str_buffer, names, num_name);
 
 	// Getting the name of the directory for recursive call
 	if(args&ARG_R){	
 
+		// some people use fingers and toes, some people use registers
 		int i=0,j=0;
-
-		int quitflag=0;
 
 		// Iterate through each name in names
 		while(num_name--)
@@ -118,7 +120,6 @@ int ls(char *directory, struct dirent **namelist, int args){
 			// Get the name from the buffer
 			j=0;
 			while(names[i]!='\n'){
-
 				directory_buffer[j++]=names[i++];
 			}
 			i++;
@@ -171,9 +172,7 @@ int print_files(int num, struct dirent **namelist, int args, char *directory, ch
 			if(S_ISDIR(stats.st_mode)){
 				
 				// skip '.' and '..' directories
-				int dot_dot = (!strcmp(".", namelist[num]->d_name) || !strcmp("..", namelist[num]->d_name));
-				
-				if(!dot_dot){
+				if(strcmp(".", namelist[num]->d_name) && strcmp("..", namelist[num]->d_name)){
 					strcat(names, buffer);
 					strcat(names, "\n");	
 					num_name++;
