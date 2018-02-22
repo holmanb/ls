@@ -50,5 +50,6 @@ EXAMPLES
 
 AUTHOR
 ------
-	Written by Brett Holman in Spring 2018. 
+	Written by Brett Holman in Spring 2018. This project can be found 
+	on GitHub at this url: https://github.com/holmanbph/ls 
 
