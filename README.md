@@ -1,4 +1,4 @@
-LS
+ls
 ==========
 
 List information about the files.  By default, the current directory is listed. 
@@ -46,6 +46,17 @@ EXAMPLES
 	./ls -R /
 
 	./ls -l ../../
+
+
+DIAGNOSTICS
+-----------
+Exit values:
+
+	0 - Success
+
+	1 - Failure due to inablity to find a file's information or file / directory not found
+
+	2 - Invalid command line option
 
 
 AUTHOR
