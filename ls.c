@@ -10,6 +10,7 @@
 #define ARG_a 2
 #define ARG_R 4
 #define DEFAULT_ARGS ARG_a
+#define _DEFAULT_SOURCE 1
 #define LENGTH 1024
 
 #include <dirent.h>
@@ -19,6 +20,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
+#include <grp.h>
+#include <pwd.h>
 #include "args.h"
 
 int ls(char *directory, struct dirent **namelist, int args);
@@ -215,34 +218,37 @@ int print_norm(struct stat stats, char *filename){
 
 /* "print_l", used when -l specified*/
 int print_l(struct stat stats , char *filename){
-// ownership
 
-// ??
-//
-// user
-//
-// group
-//
-// size
-//
+    // Ownership
 
-// Last Modified Time
-struct tm *time_struct;
-time_t modified = stats.st_mtime;
-time_t now;
-char buf[80];
-time(&now);
-time_struct = localtime(&modified);
-double time_diff = difftime(now, modified); 
-double YEAR = 365*24*3600;
-char format[15] = "\t%b %d %";
-if(time_diff > YEAR)
-    strcat(format,  "Y");
-else
-    strcat(format,  "R");
+    // Number of links 
 
-strftime(buf, sizeof(buf), format, time_struct);
+    // User
+    struct passwd *usr = getpwuid(stats.st_uid);
 
-	printf("%ld %s %s\n", stats.st_size, buf, filename); 
+     
+    // Group
+    struct group * grp = getgrgid(stats.st_gid);
+
+    
+    // Last Modified Time
+    const double YEAR = 365*24*3600;
+    struct tm *time_struct;
+    time_t now, modified = stats.st_mtime;
+    char buf[80];
+    time(&now);
+    time_struct = localtime(&modified);
+    double time_diff = difftime(now, modified); 
+    char format[15] = "\t%b %d ";
+
+    // Display files that are over a year old using year rather than time
+    if(time_diff > YEAR)
+        strcat(format,  " %Y");
+    else
+        strcat(format,  "%R");
+
+    strftime(buf, sizeof(buf), format, time_struct);
+
+	printf("%s %s %ld %s %s\n", usr->pw_name, grp->gr_name, stats.st_size, buf, filename); 
 	return 0;
 }
