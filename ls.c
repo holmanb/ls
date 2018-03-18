@@ -18,6 +18,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <time.h>
 #include "args.h"
 
 int ls(char *directory, struct dirent **namelist, int args);
@@ -214,6 +215,34 @@ int print_norm(struct stat stats, char *filename){
 
 /* "print_l", used when -l specified*/
 int print_l(struct stat stats , char *filename){
-	printf("%ld\t%s\n", stats.st_size, filename); 
+// ownership
+
+// ??
+//
+// user
+//
+// group
+//
+// size
+//
+
+// Last Modified Time
+struct tm *time_struct;
+time_t modified = stats.st_mtime;
+time_t now;
+char buf[80];
+time(&now);
+time_struct = localtime(&modified);
+double time_diff = difftime(now, modified); 
+double YEAR = 365*24*3600;
+char format[15] = "\t%b %d %";
+if(time_diff > YEAR)
+    strcat(format,  "Y");
+else
+    strcat(format,  "R");
+
+strftime(buf, sizeof(buf), format, time_struct);
+
+	printf("%ld %s %s\n", stats.st_size, buf, filename); 
 	return 0;
 }
