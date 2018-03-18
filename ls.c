@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
    // Validate arguments
    if(validate_args(argc, argv)){
 	printf("invalid arguments\n");
-	return -1;
+	return 2;
    }
    
    // stores args and gets the directory if there is one 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
 		// This is not a filename or location, 
 		printf("%s\n", strerror(errno));
-		return -1;
+		return 1;
 	}else{
 		// a single file was passed in
 		printf("Size\tName\n");
@@ -93,11 +93,11 @@ int ls(char *directory, struct dirent **namelist, int args){
 
 			// This is not a filename or location, 
 			printf("ls() error: [%s] directory[%s]\n", strerror(errno), directory);
-			return -1;
+			return 1;
 		}else{
 			// a single file was passed in
 			printf("single file in ls(): %lu\t%s\n ", stat_struct.st_size, directory);
-		  return -1;
+		  return 0;
 		}
 	}
 
