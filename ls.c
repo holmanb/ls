@@ -22,6 +22,7 @@
 #include <time.h>
 #include <grp.h>
 #include <pwd.h>
+#include <unistd.h>
 #include "args.h"
 
 int ls(char *directory, struct dirent **namelist, int args);
@@ -33,7 +34,7 @@ int iterate_args(int argc, char *argv[], char *directory);
 int get_arg(char * arg, int init);
 int is_hidden_file(char *name);
 int print_norm(struct stat stats, char *filename);
-int print_l(struct stat stats , char *filename);
+int print_l(struct stat stats , char *filename, char *path);
 
 int main(int argc, char *argv[])
 {
@@ -78,7 +79,6 @@ int main(int argc, char *argv[])
 	
 	// This is where the listing of directories begins
 	printf("Directory listing of %s\n", directory);
-	printf("Size\tName");
 	ls(directory,namelist, args);
    }
    return 0;
@@ -103,9 +103,11 @@ int ls(char *directory, struct dirent **namelist, int args){
 		  return 0;
 		}
 	}
+// This is the subdirectory name, before the listing of its subdirectories
 
-	// This is the subdirectory name, before the listing of its subdirectories
-	printf("\n%s\n", directory);
+	if(!(args&ARG_l))        
+        printf("Size\tName\n");
+	//printf("\n%s\n", directory);
 	char  directory_buffer[LENGTH]={'\0'}, names[LENGTH*32]={'\0'};
 	int num_name=0;
 
@@ -186,7 +188,7 @@ int print_files(int num, struct dirent **namelist, int args, char *directory, ch
 
 		// different print function for -l flag
 		if(args & ARG_l){
-			print_l(stats, namelist[num]->d_name);
+			print_l(stats, namelist[num]->d_name, buffer);
 		}
 		else{
 			print_norm(stats, namelist[num]->d_name);
@@ -217,12 +219,14 @@ int print_norm(struct stat stats, char *filename){
 }
 
 /* "print_l", used when -l specified*/
-int print_l(struct stat stats , char *filename){
+int print_l(struct stat stats , char *filename, char * path){
 
     // Mode
     mode_t mode =  stats.st_mode;
     char perm[64]={0};
-    //printf("%04x \n", mode);
+    char slink[64] = {'\0'};
+
+    // File Type
     switch(mode & S_IFMT){
         case S_IFCHR:
             strcat(perm, "c");
@@ -250,6 +254,7 @@ int print_l(struct stat stats , char *filename){
             break;
     }
 
+    // Permissions
     mode_t  m[9] = {
         S_IRUSR, S_IWUSR, S_IXUSR, 
         S_IRGRP, S_IWGRP, S_IXGRP,
@@ -303,7 +308,7 @@ int print_l(struct stat stats , char *filename){
     time(&now);
     time_struct = localtime(&modified);
     double time_diff = difftime(now, modified); 
-    char format[15] = "\t%b %d ";
+    char format[15] = " %b %d ";
 
     // Display files that are over a year old using year rather than time
     if(time_diff > YEAR)
@@ -313,6 +318,16 @@ int print_l(struct stat stats , char *filename){
 
     strftime(buf, sizeof(buf), format, time_struct);
 
-	printf("%s %d %s %s %ld %s %s\n", perm, stats.st_nlink, usr->pw_name, grp->gr_name, stats.st_size, buf, filename); 
+    //symbolic link
+    if( perm[0] == 'l' )
+        readlink(path, slink, 64);
+    char arrow[5]={' '};;
+    
+    if(slink[0] != '\0')
+        strcat(arrow, " -> ");
+
+    
+
+	printf("%s %3d %s %s %7ld %s %s %s %s\n", perm, stats.st_nlink, usr->pw_name, grp->gr_name, stats.st_size, buf, filename, arrow, slink); 
 	return 0;
 }

@@ -1,3 +1,9 @@
+// File: args.h
+// Purpose: parsing these three arguments for this program 
+// Author: Brett Holman
+// Note: after writing this, I discovered that C has Getopt.  I had previously used such
+// argument parsing functions in Perl, and Python, but I didn't think that C had such things
+
 
 int get_args(int argc, char *argv[], char *directory);
 int validate_args(int argc, char *argv[]);
@@ -94,13 +100,13 @@ int get_arg(char * arg, int init){
 	// Check for args
 	if(arg[init]=='l'){
 		args |= ARG_l;
-		printf("flag -l found\n");
+		//printf("flag -l found\n");
 	}else if(arg[init]=='a'){
 		args |= ARG_a;
-		printf("flag -a found\n");
+		//printf("flag -a found\n");
 	}else if(arg[init]=='R'){
 		args |= ARG_R;
-		printf("flag -R found\n");
+		//printf("flag -R found\n");
 	}	
 
 	// Check the other characters
