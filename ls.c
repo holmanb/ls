@@ -219,13 +219,77 @@ int print_norm(struct stat stats, char *filename){
 /* "print_l", used when -l specified*/
 int print_l(struct stat stats , char *filename){
 
-    // Ownership
+    // Mode
+    mode_t mode =  stats.st_mode;
+    char perm[64]={0};
+    //printf("%04x \n", mode);
+    switch(mode & S_IFMT){
+        case S_IFCHR:
+            strcat(perm, "c");
+            break;
+        case S_IFBLK:
+            strcat(perm, "b");
+            break;
+        case S_IFIFO:
+            strcat(perm, "p");
+            break;
+        case S_IFDIR:
+            strcat(perm, "d");
+            break;
+        case S_IFLNK:
+            strcat(perm, "l");
+            break;
+        case S_IFSOCK:
+            strcat(perm, "s");
+            break;
+        case S_IFREG:
+            strcat(perm, "-");
+            break;
+        default:
+            strcat(perm, "?");
+            break;
+    }
 
-    // Number of links 
+    mode_t  m[9] = {
+        S_IRUSR, S_IWUSR, S_IXUSR, 
+        S_IRGRP, S_IWGRP, S_IXGRP,
+        S_IROTH, S_IWOTH, S_IXOTH
+        };
+    for(int i=0; i<9; i++){
+        switch(m[i] & mode){
+            case S_IRUSR:
+            case S_IRGRP:
+            case S_IROTH:
+                strcat(perm, "r");
+                break;
+            case S_IWUSR:
+            case S_IWGRP:
+            case S_IWOTH:
+                strcat(perm, "w");
+                break;
+            case S_IXUSR:
+            case S_IXGRP:
+            case S_IXOTH:
+                strcat(perm, "x");
+                break;
+            default:
+                strcat(perm, "-");
+                break;
+        }
+    }
+
+    // SUID
+    if(mode & S_ISUID)
+        perm[3] = (mode & S_IXUSR) ? 's' : 'S';
+    // GUID
+    if(mode & S_ISGID)
+        perm[6] = (mode & S_IXGRP) ? 's' : 'i';
+    // Sticky bit
+    if(mode & S_ISVTX)
+        perm[9] = (mode & S_IXOTH) ? 't' : 'T';
 
     // User
     struct passwd *usr = getpwuid(stats.st_uid);
-
      
     // Group
     struct group * grp = getgrgid(stats.st_gid);
@@ -249,6 +313,6 @@ int print_l(struct stat stats , char *filename){
 
     strftime(buf, sizeof(buf), format, time_struct);
 
-	printf("%s %s %ld %s %s\n", usr->pw_name, grp->gr_name, stats.st_size, buf, filename); 
+	printf("%s %d %s %s %ld %s %s\n", perm, stats.st_nlink, usr->pw_name, grp->gr_name, stats.st_size, buf, filename); 
 	return 0;
 }
