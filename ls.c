@@ -23,8 +23,11 @@
 #include <grp.h>
 #include <pwd.h>
 #include <unistd.h>
+#include <errno.h>
 #include "args.h"
 
+int print_dir(int args, char * directory);
+int recur(int args, char * directory);
 int ls(char *directory, struct dirent **namelist, int args);
 int recursive_print_files(int num, struct dirent **namelist, int args, char *directory, char *buffer);
 int print_files(int num, struct dirent **namelist, int args, char *directory, char *buffer, char *names, int num_name);
@@ -38,50 +41,171 @@ int print_l(struct stat stats , char *filename, char *path);
 
 int main(int argc, char *argv[])
 {
-   struct dirent **namelist;
-   int n=-1;
-   int args=0;
-   char directory[LENGTH]={0};
-   char str_buffer[LENGTH]={0};
-   directory[0] = '\0';
+    int args=0;
+    char directory[LENGTH]={0};
+    char str_buffer[LENGTH]={0};
+    directory[0] = '\0';
 
-   // PROF requested ls to default to -a behavior 
-   // comment out next line for standard ls behavior
-   args=DEFAULT_ARGS;
+    // PROF requested ls to default to -a behavior 
+    // comment out next line for standard ls behavior
+    args=DEFAULT_ARGS;
 
-   // Validate arguments
-   if(validate_args(argc, argv)){
-	printf("invalid arguments\n");
-	return 2;
-   }
-   
-   // stores args and gets the directory if there is one 
-   args = get_args(argc, argv, directory) | args; 
+    // Validate arguments
+    if(validate_args(argc, argv)){
+        printf("invalid arguments\n");
+        return 2;
+    }
 
-   // do scandir and print out the directory
-   n=scandir(directory, &namelist, NULL, alphasort); 
-   if (n < 0){
+    // stores args and gets the directory if there is one 
+    args = get_args(argc, argv, directory) | args; 
 
-	// possible a single file, try doing lstat on it
-	// currently doesn't handle a list of files, consider implementing this (TODO)
-	struct stat stat_struct;
-	if(lstat(directory, &stat_struct)==-1){
+    print_dir(args, directory);
+    // do recursion after printing directory
+    if(args & ARG_R){
 
-		// This is not a filename or location, 
-		printf("%s\n", strerror(errno));
-		return 1;
-	}else{
-		// a single file was passed in
-		printf("Size\tName\n");
-		printf("%lu\t%s\n ", stat_struct.st_size, directory);
-	}
-   }else{
-	
-	// This is where the listing of directories begins
-	printf("Directory listing of %s\n", directory);
-	ls(directory,namelist, args);
-   }
-   return 0;
+        // skip '.' and '..' directories
+        if(!(strcmp(".", directory) && strcmp("..",directory))){ 
+            recur(args, directory); 
+        }
+    }
+    return 0;
+}
+int print_dir(int args, char * directory){
+    // do scandir and print out the directory
+    int n = -1;
+    struct dirent **namelist;
+    struct stat stat_struct;
+    n=scandir(directory, &namelist, NULL, alphasort); 
+    if (n < 0){
+
+        // possible a single file, try doing lstat on it
+        // currently doesn't handle a list of files, consider implementing this (TODO)
+        if(lstat(directory, &stat_struct)==-1){
+
+            // This is not a filename or location, 
+            printf("%s\n", strerror(errno));
+            return 1;
+        }else{
+            // a single file was passed in
+            printf("Size\tName\n");
+            printf("%lu\t%s\n ", stat_struct.st_size, directory);
+        }
+    }else{
+
+        // This is where the listing of directories begins
+        printf("Directory listing of %s\n", directory);
+        int num=-1;
+        while(++num < n){
+
+            // allows hidden files and directoriesto be skipped
+            if(args & ARG_a || !is_hidden_file(namelist[num]->d_name)){
+
+                // Check the file
+                int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 1;
+                char * file = (char *) malloc(str_size); 
+                strcpy(file, directory);
+                strcat(file, "/");
+                strcat(file, namelist[num]->d_name);
+                strcat(file, "\0");
+
+                if(lstat(file, &stat_struct)==-1){
+                    printf("Error in print_dir on file: [%s]\n", file);
+                    printf("%s\n", strerror(errno));
+                    return 1;
+                }
+
+                // different print function for -l flag
+                if(args & ARG_l){
+                    print_l(stat_struct, namelist[num]->d_name, directory);
+                }
+
+                // default print 
+                else{
+                    print_norm(stat_struct, namelist[num]->d_name);
+                }
+                free(file);
+            }
+            free(namelist[num]);
+        }
+        free(namelist);
+    }
+    return 0;
+}
+int recur(int args, char * directory){
+
+    printf("in recur on directory %s\n",directory);
+    // skip all . and .. directories
+    //if(!(strcmp(".", directory) && strcmp("..",directory))){ 
+    //    return 0;
+    //}
+    int n = -1;
+    int num=-1;
+    struct dirent **namelist;
+    struct stat stat_struct;
+    n=scandir(directory, &namelist, NULL, alphasort); 
+    printf("1");
+    if (n < 0){
+
+        // possible a single file, try doing lstat on it
+        // currently doesn't handle a list of files, consider implementing this (TODO)
+        if(lstat(directory, &stat_struct)==-1){
+
+            // This is not a filename or location, 
+            printf("%s\n", strerror(errno));
+            return 1;
+        }else{
+            // a single file was passed in
+            printf("Size\tName\n");
+            printf("%lu\t%s\n ", stat_struct.st_size, directory);
+        }
+    }
+
+
+    // Scan the directory
+    printf("\n%s:\ntotal %d", directory, n);
+
+    // Check each item to see if it is a directory 
+    while(++num < n){
+        
+        // skip '.' and '..' directories
+        if(strcmp(".", namelist[num]->d_name) && strcmp("..", namelist[num]->d_name)){
+            printf("skipping . or ..");
+            continue;
+        }
+
+
+        int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 1;
+        char * file = (char *) malloc(str_size); 
+        strcpy(file, directory);
+        strcat(file, "/");
+        strcat(file, namelist[num]->d_name);
+        strcat(file, "\0");
+
+        // Check the file
+        if(lstat(file, &stat_struct)==-1){
+            printf("Error in print_dir on file: [%s]\n", file);
+            printf("%s\n", strerror(errno));
+            return 1;
+        }
+
+        if(S_ISDIR(stat_struct.st_mode)){
+             
+            // different print function for -l flag
+            if(args & ARG_l){
+                print_l(stat_struct, namelist[num]->d_name, directory);
+            }
+            // default print 
+            else{
+                print_norm(stat_struct, namelist[num]->d_name);
+            }
+            if(args&ARG_R){
+                recur(args, file);
+            }
+        }
+        free(namelist[num]);
+    }
+    free(namelist);
+    return 0;
 }
 
 int ls(char *directory, struct dirent **namelist, int args){
@@ -103,8 +227,8 @@ int ls(char *directory, struct dirent **namelist, int args){
 		  return 0;
 		}
 	}
-// This is the subdirectory name, before the listing of its subdirectories
 
+    // This is the subdirectory name, before the listing of its subdirectories
 	if(!(args&ARG_l))        
         printf("Size\tName\n");
 	//printf("\n%s\n", directory);
@@ -133,7 +257,9 @@ int ls(char *directory, struct dirent **namelist, int args){
 			
 			// recursive walk through filesystem
 			if(strcmp(names,"")){
-				ls(directory_buffer, namelist, args);
+				if(ls(directory_buffer, namelist, args)){
+                    return 1;
+                }
 			}else if(names!=""){
 				printf("names was empty, skipping it, num_name=%d\n",num_name);
 			}else{
