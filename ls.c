@@ -72,10 +72,13 @@ int main(int argc, char *argv[])
 }
 int print_dir(int args, char * directory){
     // do scandir and print out the directory
+    printf("in print_dir\n");
     int n = -1;
     struct dirent **namelist;
     struct stat stat_struct;
+    printf("scanning dir %s\n ",directory);
     n=scandir(directory, &namelist, NULL, alphasort); 
+    printf("dir scanned\n");
     if (n < 0){
 
         // possible a single file, try doing lstat on it
@@ -83,6 +86,7 @@ int print_dir(int args, char * directory){
         if(lstat(directory, &stat_struct)==-1){
 
             // This is not a filename or location, 
+            printf("Error in print_dir on file: [%s]\n", directory);
             printf("%s\n", strerror(errno));
             return 1;
         }else{
@@ -101,8 +105,8 @@ int print_dir(int args, char * directory){
             if(args & ARG_a || !is_hidden_file(namelist[num]->d_name)){
 
                 // Check the file
-                int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 1;
-                char * file = (char *) malloc(str_size); 
+                int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 3;
+                char file[LENGTH*4];
                 strcpy(file, directory);
                 strcat(file, "/");
                 strcat(file, namelist[num]->d_name);
@@ -123,7 +127,6 @@ int print_dir(int args, char * directory){
                 else{
                     print_norm(stat_struct, namelist[num]->d_name);
                 }
-                free(file);
             }
             free(namelist[num]);
         }
@@ -133,17 +136,13 @@ int print_dir(int args, char * directory){
 }
 int recur(int args, char * directory){
 
-    printf("in recur on directory %s\n",directory);
-    // skip all . and .. directories
-    //if(!(strcmp(".", directory) && strcmp("..",directory))){ 
-    //    return 0;
-    //}
+    int len = sizeof(directory) / sizeof(directory[0]);
+
     int n = -1;
     int num=-1;
     struct dirent **namelist;
     struct stat stat_struct;
     n=scandir(directory, &namelist, NULL, alphasort); 
-    printf("1");
     if (n < 0){
 
         // possible a single file, try doing lstat on it
@@ -151,31 +150,30 @@ int recur(int args, char * directory){
         if(lstat(directory, &stat_struct)==-1){
 
             // This is not a filename or location, 
+            printf("Error in print_dir on file: [%s]\n", directory);
             printf("%s\n", strerror(errno));
             return 1;
         }else{
             // a single file was passed in
             printf("Size\tName\n");
             printf("%lu\t%s\n ", stat_struct.st_size, directory);
+            return 0; 
         }
     }
 
 
     // Scan the directory
-    printf("\n%s:\ntotal %d", directory, n);
+    printf("\n%s:\ntotal %d\n", directory, n);
 
     // Check each item to see if it is a directory 
     while(++num < n){
-        
-        // skip '.' and '..' directories
-        if(strcmp(".", namelist[num]->d_name) && strcmp("..", namelist[num]->d_name)){
-            printf("skipping . or ..");
+        if(!(strcmp(".", namelist[num]->d_name) && strcmp("..",namelist[num]->d_name))){ 
+            printf("2\n"); 
+            free(namelist[num]);
             continue;
         }
-
-
-        int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 1;
-        char * file = (char *) malloc(str_size); 
+        int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 3;
+        char file[LENGTH*4];
         strcpy(file, directory);
         strcat(file, "/");
         strcat(file, namelist[num]->d_name);
@@ -185,28 +183,40 @@ int recur(int args, char * directory){
         if(lstat(file, &stat_struct)==-1){
             printf("Error in print_dir on file: [%s]\n", file);
             printf("%s\n", strerror(errno));
+            free(namelist[num]);
             return 1;
         }
-
+        
+        printf("9\n"); 
+        // if it's a directory
         if(S_ISDIR(stat_struct.st_mode)){
-             
-            // different print function for -l flag
-            if(args & ARG_l){
-                print_l(stat_struct, namelist[num]->d_name, directory);
-            }
-            // default print 
-            else{
-                print_norm(stat_struct, namelist[num]->d_name);
-            }
-            if(args&ARG_R){
-                recur(args, file);
-            }
+            printf("10\n"); 
+            print_dir(args, file);
+            printf("12\n"); 
+            recur(args, file);
         }
+
+        printf("11\n"); 
         free(namelist[num]);
     }
     free(namelist);
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 int ls(char *directory, struct dirent **namelist, int args){
 	
@@ -363,7 +373,7 @@ int print_l(struct stat stats , char *filename, char * path){
         case S_IFIFO:
             strcat(perm, "p");
             break;
-        case S_IFDIR:
+            strcat(perm, "d");
             strcat(perm, "d");
             break;
         case S_IFLNK:
