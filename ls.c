@@ -162,7 +162,6 @@ int recur(int args, char * directory){
         }
     }
 
-
     // Scan the directory
     printf("\n%s:\ntotal %d\n", directory, n);
 
@@ -197,137 +196,6 @@ int recur(int args, char * directory){
     }
     free(namelist);
     return 0;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-int ls(char *directory, struct dirent **namelist, int args){
-	
-	char str_buffer[LENGTH];
-	int n=scandir(directory, &namelist, NULL, alphasort); 
-	if(n<0){
-		// possible a single file, try doing lstat on it
-		// currently doesn't handle a list of files, consider implementing this (TODO)
-		struct stat stat_struct;
-		if(lstat(directory, &stat_struct)==-1){
-
-			// This is not a filename or location, 
-			printf("ls() error: [%s] directory[%s]\n", strerror(errno), directory);
-			return 1;
-		}else{
-			// a single file was passed in
-			printf("single file in ls(): %lu\t%s\n ", stat_struct.st_size, directory);
-		  return 0;
-		}
-	}
-
-    // This is the subdirectory name, before the listing of its subdirectories
-	if(!(args&ARG_l))        
-        printf("Size\tName\n");
-	//printf("\n%s\n", directory);
-	char  directory_buffer[LENGTH]={'\0'}, names[LENGTH*32]={'\0'};
-	int num_name=0;
-
-	// Print the file names!
-	num_name = print_files(n, namelist, args, directory,str_buffer, names, num_name);
-
-	// Getting the name of the directory for recursive call
-	if(args&ARG_R){	
-
-		// some people use fingers and toes, some people use registers
-		int i=0,j=0;
-
-		// Iterate through each name in names
-		while(num_name--)
-		{
-			// Get the name from the buffer
-			j=0;
-			while(names[i]!='\n'){
-				directory_buffer[j++]=names[i++];
-			}
-			i++;
-			directory_buffer[j]='\0';
-			
-			// recursive walk through filesystem
-			if(strcmp(names,"")){
-				if(ls(directory_buffer, namelist, args)){
-                    return 1;
-                }
-			}else if(names!=""){
-				printf("names was empty, skipping it, num_name=%d\n",num_name);
-			}else{
-				printf("names was null, skipping it\n");
-			}
-		}
-	}
-	return 0;
-}
-
-// prints out each file
-int print_files(int num, struct dirent **namelist, int args, char *directory, char *buffer, char *names, int num_name){
-
-	// Base case
-	if(!num) return 0;	 	
-
-	// Recur	
-	num_name += print_files(--num, namelist, args, directory, buffer, names, num_name);	
-
-	// concatenate filename and filepath
-	strcpy(buffer, directory);		
-
-	// skip concattenating / if the last char on the buffer is / (avoids //<filename>
-	if(!(buffer && *buffer && buffer[strlen(buffer) - 1] == '/')) 
-		strcat(buffer, "/");
-	strcat(buffer, namelist[num]->d_name);
-	strcat(buffer, "\0");
-
-	// print file if -a or if it isn't hidden
-	if(args & ARG_a || !is_hidden_file(namelist[num]->d_name)){
-
-		// Getting stat struct
-		struct stat stats;
-		if(lstat(buffer, &stats)==-1){
-			printf("%s\n", strerror(errno));
-		}
-
-		// Recursive flag set
-		if(args&ARG_R){
-
-			// Check if it's a directory
-			if(S_ISDIR(stats.st_mode)){
-				
-				// skip '.' and '..' directories
-				if(strcmp(".", namelist[num]->d_name) && strcmp("..", namelist[num]->d_name)){
-					strcat(names, buffer);
-					strcat(names, "\n");	
-					num_name++;
-				}
-			}
-		}
-
-		// different print function for -l flag
-		if(args & ARG_l){
-			print_l(stats, namelist[num]->d_name, buffer);
-		}
-		else{
-			print_norm(stats, namelist[num]->d_name);
-		}
-	}
-	free(namelist[num]);
-	return num_name;
 }
 
 int is_hidden_file(char *name){
@@ -369,7 +237,7 @@ int print_l(struct stat stats , char *filename, char * path){
         case S_IFIFO:
             strcat(perm, "p");
             break;
-            strcat(perm, "d");
+        case S_IFDIR:
             strcat(perm, "d");
             break;
         case S_IFLNK:
