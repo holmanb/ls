@@ -44,7 +44,6 @@ int main(int argc, char *argv[])
     int args=0;
     char directory[LENGTH]={0};
     char str_buffer[LENGTH]={0};
-    directory[0] = '\0';
 
     // PROF requested ls to default to -a behavior 
     // comment out next line for standard ls behavior
@@ -60,25 +59,27 @@ int main(int argc, char *argv[])
     args = get_args(argc, argv, directory) | args; 
 
     print_dir(args, directory);
+    printf("directory %s\n", directory);
     // do recursion after printing directory
     if(args & ARG_R){
 
+        printf("directory %s\n", directory);
         // skip '.' and '..' directories
-        if(!(strcmp(".", directory) && strcmp("..",directory))){ 
+        if(!(strcmp(".", directory) && strcmp("..",directory)) || !strcmp("/", directory)){ 
             recur(args, directory); 
         }
+        else{printf("looks like [%s] is equal to [.] or [..] \n",directory);}
     }
     return 0;
 }
+
 int print_dir(int args, char * directory){
+
     // do scandir and print out the directory
-    printf("in print_dir\n");
     int n = -1;
     struct dirent **namelist;
     struct stat stat_struct;
-    printf("scanning dir %s\n ",directory);
     n=scandir(directory, &namelist, NULL, alphasort); 
-    printf("dir scanned\n");
     if (n < 0){
 
         // possible a single file, try doing lstat on it
@@ -168,7 +169,6 @@ int recur(int args, char * directory){
     // Check each item to see if it is a directory 
     while(++num < n){
         if(!(strcmp(".", namelist[num]->d_name) && strcmp("..",namelist[num]->d_name))){ 
-            printf("2\n"); 
             free(namelist[num]);
             continue;
         }
@@ -187,16 +187,12 @@ int recur(int args, char * directory){
             return 1;
         }
         
-        printf("9\n"); 
         // if it's a directory
         if(S_ISDIR(stat_struct.st_mode)){
-            printf("10\n"); 
             print_dir(args, file);
-            printf("12\n"); 
             recur(args, file);
         }
 
-        printf("11\n"); 
         free(namelist[num]);
     }
     free(namelist);
