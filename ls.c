@@ -35,7 +35,6 @@
 int print_dir(int args, char * directory);
 int recur(int args, char * directory, int *summary);
 int get_args(int argc, char *argv[], char *directory);
-int validate_args(int argc, char *argv[]); // this is currently not implemented (TODO)
 int get_arg(char * arg, int init);
 int is_hidden_file(char *name);
 int print_norm(struct stat stats, char *filename);

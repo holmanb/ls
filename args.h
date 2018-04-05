@@ -6,63 +6,8 @@
 
 
 int get_args(int argc, char *argv[], char *directory);
-int validate_args(int argc, char *argv[]);
 int iterate_args(int argc, char *argv[], char *directory);
 int get_arg(char * arg, int init);
-
-// interpret CLI args
-int get_args_iter(int argc, char *argv[], char *directory){
-
-    int args=0;
-    
-    // if length == 1, no args passed 
-    if(argc == 1){
-         directory[0] = '.';
-         directory[1] = '\0';
-         return 0;
-    }
-     
-    // For this simple program, the only non-flag is the distination to ls
-    int directory_found=0;
-    for (int i=1;i<argc;i++){
-
-	// Searching for non-flag arg
-	if(argv[i][0] != '-'){
-		strcpy(directory, argv[i]); 	
-        strcat(directory,'\0');
-		directory_found=1;
-	}
-	// checking flags
-	else{
-	   	int j=1;
-		char character;
-		while(character=argv[i][j++]){
-			if(character=='l'){
-				args |= ARG_l;
-			}else if(character=='a'){
-				args |= ARG_a;
-			}else if(character=='R'){
-				args |= ARG_R;
-			}	
-		}
-	}
-   }
-   if(!directory_found){
-        directory[0]='.';
-        directory[1]='\0';
-   }
-   return args;
-} 
-
-
-
-// validate CLI args
-int validate_args(int argc, char *argv[]){
-	return 0;
-	// validate flags against list (alR)
-	// validate only one non-flag argument
-}
-
 
 
 int iterate_args(int argc, char *argv[], char *directory){
