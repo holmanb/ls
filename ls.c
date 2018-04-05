@@ -52,18 +52,21 @@ int main(int argc, char *argv[])
     // comment out next line for standard ls behavior
     args=DEFAULT_ARGS;
 
-    // Validate arguments
-    if(validate_args(argc, argv)){
-        printf("invalid arguments\n");
-        return 2;
-    }
-
     // stores args and gets the directory if there is one 
     args = get_args(argc, argv, directory) | args; 
 
+    // Validate arguments
+    if(args == -1){
+        printf("usage: %s [options] [filepath]\n",argv[0]);
+        printf("\toptions:\n");
+        printf("\t\t-a  all\n");
+        printf("\t\t-l  long\n");
+        printf("\t\t-R  recursive\n\n");
+        return 2;
+    }
+
     // print the given directory
     print_dir(args, directory);
-    printf("directory %s\n", directory);
 
     // do recursion after printing directory
     if(args & ARG_R){

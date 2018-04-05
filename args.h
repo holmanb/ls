@@ -13,18 +13,18 @@ int get_arg(char * arg, int init);
 // interpret CLI args
 int get_args_iter(int argc, char *argv[], char *directory){
 
-   int args=0;
-   
-   // if length == 1, no args passed 
-   if(argc == 1){
-        directory[0] = '.';
-        directory[1] = '\0';
-        return 0;
-   }
+    int args=0;
     
-   // For this simple program, the only non-flag is the distination to ls
-   int directory_found=0;
-   for (int i=1;i<argc;i++){
+    // if length == 1, no args passed 
+    if(argc == 1){
+         directory[0] = '.';
+         directory[1] = '\0';
+         return 0;
+    }
+     
+    // For this simple program, the only non-flag is the distination to ls
+    int directory_found=0;
+    for (int i=1;i<argc;i++){
 
 	// Searching for non-flag arg
 	if(argv[i][0] != '-'){
@@ -71,12 +71,11 @@ int iterate_args(int argc, char *argv[], char *directory){
 	if(argc==1) return 0;
 	
 	// Don't get args if it is the directory 
-	//printf("argc:%d \n ", argc); 
-	//printf("argv:%s\n",  argv[argc-1]);
 	if(argv[argc-1][0] != '-'){
-		//printf("argv[argc-1][0]=%d\n", argv[argc-1][0]);
+        if(directory[0] != '\0'){
+            return -1;
+        }
 		strcpy(directory, argv[argc-1]); 	
-		//printf("directory found in arglist: %s\n", directory);	
 		
 		// don't get the character for the directory
 		return iterate_args(--argc, argv, directory);
@@ -98,14 +97,13 @@ int get_arg(char * arg, int init){
 	// Check for args
 	if(arg[init]=='l'){
 		args |= ARG_l;
-		//printf("flag -l found\n");
 	}else if(arg[init]=='a'){
 		args |= ARG_a;
-		//printf("flag -a found\n");
 	}else if(arg[init]=='R'){
 		args |= ARG_R;
-		//printf("flag -R found\n");
-	}	
+	}else{
+        return -1;
+    }
 
 	// Check the other characters
 	return args | get_arg(arg, ++init);
@@ -117,16 +115,16 @@ int get_args(int argc, char *argv[], char *directory){
    int args=0;
    
    // if length == 1, no args passed 
-   if(argc == 1){
-	directory[0] = '.';
-	return 0;
-   }
+    if(argc == 1){
+         directory[0] = '.';
+         return 0;
+    }
     
-   // For this simple program, the only non-flag is the distination to ls
-   args = iterate_args(argc, argv, directory);
-   //printf("args found:%d", args);
-   if(!directory[0])
-	directory[0]='.';
+    // For this simple program, the only non-flag is the distination to ls
+    args = iterate_args(argc, argv, directory);
+    //printf("args found:%d", args);
+    if(!directory[0])
+    	directory[0]='.';
 
-   return args;
+    return args;
 } 
