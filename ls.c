@@ -12,6 +12,12 @@
 #define DEFAULT_ARGS ARG_a
 #define _DEFAULT_SOURCE 1
 #define LENGTH 1024
+#define FILES 0
+#define DIRS 1
+#define LINKS 2
+#define SOCKETS 3
+#define OTHER 4
+#define TOTAL 5
 
 #include <dirent.h>
 #include <stdio.h>
@@ -27,13 +33,9 @@
 #include "args.h"
 
 int print_dir(int args, char * directory);
-int recur(int args, char * directory);
-int ls(char *directory, struct dirent **namelist, int args);
-int recursive_print_files(int num, struct dirent **namelist, int args, char *directory, char *buffer);
-int print_files(int num, struct dirent **namelist, int args, char *directory, char *buffer, char *names, int num_name);
+int recur(int args, char * directory, int *summary);
 int get_args(int argc, char *argv[], char *directory);
 int validate_args(int argc, char *argv[]); // this is currently not implemented (TODO)
-int iterate_args(int argc, char *argv[], char *directory);
 int get_arg(char * arg, int init);
 int is_hidden_file(char *name);
 int print_norm(struct stat stats, char *filename);
@@ -44,6 +46,7 @@ int main(int argc, char *argv[])
     int args=0;
     char directory[LENGTH]={0};
     char str_buffer[LENGTH]={0};
+    int summary[6]={0};
 
     // PROF requested ls to default to -a behavior 
     // comment out next line for standard ls behavior
@@ -58,24 +61,42 @@ int main(int argc, char *argv[])
     // stores args and gets the directory if there is one 
     args = get_args(argc, argv, directory) | args; 
 
+    // print the given directory
     print_dir(args, directory);
     printf("directory %s\n", directory);
+
     // do recursion after printing directory
     if(args & ARG_R){
 
         printf("directory %s\n", directory);
+
         // skip '.' and '..' directories
         if(!(strcmp(".", directory) && strcmp("..",directory)) || !strcmp("/", directory)){ 
-            recur(args, directory); 
+            
+            // where the magic happens
+            recur(args, directory, summary); 
         }
-        else{printf("looks like [%s] is equal to [.] or [..] \n",directory);}
+
+        // Prof requested summary as part of grading
+        printf("\n\n+---------------------------+\n");
+        printf("|RECURSION SUMMARY          |\n");
+        printf("|===========================|\n");
+        printf("|Total files:      %9d|\n",summary[FILES]);
+        printf("|Total directories:%9d|\n",summary[DIRS]);
+        printf("|Total links:      %9d|\n",summary[LINKS]);
+        printf("|Total sockets:    %9d|\n",summary[SOCKETS]);
+        printf("|Total other:      %9d|\n",summary[OTHER]);
+        printf("|---------------------------|\n");
+        printf("|Total entries:    %9d|\n",summary[OTHER] + summary[SOCKETS] + summary[LINKS] + summary[DIRS] + summary[FILES]);
+        printf("+---------------------------+\n\n\n");
+
     }
     return 0;
 }
 
+/* for printing the given directory */
 int print_dir(int args, char * directory){
 
-    // do scandir and print out the directory
     int n = -1;
     struct dirent **namelist;
     struct stat stat_struct;
@@ -83,7 +104,6 @@ int print_dir(int args, char * directory){
     if (n < 0){
 
         // possible a single file, try doing lstat on it
-        // currently doesn't handle a list of files, consider implementing this (TODO)
         if(lstat(directory, &stat_struct)==-1){
 
             // This is not a filename or location, 
@@ -98,7 +118,6 @@ int print_dir(int args, char * directory){
     }else{
 
         // This is where the listing of directories begins
-        printf("Directory listing of %s\n", directory);
         int num=-1;
         while(++num < n){
 
@@ -106,13 +125,16 @@ int print_dir(int args, char * directory){
             if(args & ARG_a || !is_hidden_file(namelist[num]->d_name)){
 
                 // Check the file
-                int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 3;
                 char file[LENGTH*4];
                 strcpy(file, directory);
-                strcat(file, "/");
+
+                // Don't append if '/' is passed in
+                if(strcmp("/", directory))
+                    strcat(file, "/");
                 strcat(file, namelist[num]->d_name);
                 strcat(file, "\0");
 
+                // error
                 if(lstat(file, &stat_struct)==-1){
                     printf("Error in print_dir on file: [%s]\n", file);
                     printf("%s\n", strerror(errno));
@@ -129,13 +151,16 @@ int print_dir(int args, char * directory){
                     print_norm(stat_struct, namelist[num]->d_name);
                 }
             }
+            // who needs memory anyways?
             free(namelist[num]);
         }
         free(namelist);
     }
     return 0;
 }
-int recur(int args, char * directory){
+
+/* for decending deeper into the directory */
+int recur(int args, char * directory, int *summary){
 
     int len = sizeof(directory) / sizeof(directory[0]);
 
@@ -171,10 +196,13 @@ int recur(int args, char * directory){
             free(namelist[num]);
             continue;
         }
-        int str_size = strlen(directory) + strlen(namelist[num]->d_name) + 3;
         char file[LENGTH*4];
         strcpy(file, directory);
-        strcat(file, "/");
+
+
+        // Don't add if it's '/'
+        if(strcmp("/", directory))
+            strcat(file, "/");
         strcat(file, namelist[num]->d_name);
         strcat(file, "\0");
 
@@ -186,11 +214,21 @@ int recur(int args, char * directory){
             return 1;
         }
         
-        // if it's a directory
+        // if it's a directory, time to dig a little deeper
         if(S_ISDIR(stat_struct.st_mode)){
             print_dir(args, file);
-            recur(args, file);
+            recur(args, file, summary);
+            summary[DIRS]++;
+        }else if(S_ISLNK(stat_struct.st_mode)){
+            summary[LINKS]++;
+        }else if(S_ISREG(stat_struct.st_mode)){
+            summary[FILES]++;
+        }else if(S_ISSOCK(stat_struct.st_mode)){
+            summary[SOCKETS]++;
+        }else{
+            summary[OTHER]++;
         }
+
 
         free(namelist[num]);
     }
@@ -198,22 +236,16 @@ int recur(int args, char * directory){
     return 0;
 }
 
+/* returns 0 if hidden file */
 int is_hidden_file(char *name){
 
-	// hidden files start with '.'
-	if(name[0] != '.') return 0;
-	if(name[1] == '\0') return 0;	       // . is not a hidden file
-	if(name[1] == '.' && name[2] == '\0')  //.. is not a hidden file
-		return 0;	
-
-	// all other files have regex pattern ^\..+$ and are therefore hidden
-	return 1;
+	// hidden files start with . 
+	return name[0] == '.' ? 1:0;
 }
 
 /* "normal print", used when -l not specified*/
 int print_norm(struct stat stats, char *filename){
 
-	
 	printf("%ld\t%s\n", stats.st_size, filename); 
 	return 0;
 }
@@ -254,7 +286,10 @@ int print_l(struct stat stats , char *filename, char * path){
             break;
     }
 
-    // Permissions
+    // Permissions: 
+    // is this approach more simple? - depends on how you think
+    // does this approach avoid repetitive typing? - sortof
+    // is this approach original? - yes
     mode_t  m[9] = {
         S_IRUSR, S_IWUSR, S_IXUSR, 
         S_IRGRP, S_IWGRP, S_IXGRP,
@@ -283,13 +318,13 @@ int print_l(struct stat stats , char *filename, char * path){
         }
     }
 
-    // SUID
+    // SUID - makes hacking more simple
     if(mode & S_ISUID)
         perm[3] = (mode & S_IXUSR) ? 's' : 'S';
-    // GUID
+    // GUID - makes admins happy
     if(mode & S_ISGID)
         perm[6] = (mode & S_IXGRP) ? 's' : 'i';
-    // Sticky bit
+    // Sticky bit - for avoiding accidents & malicious actions  
     if(mode & S_ISVTX)
         perm[9] = (mode & S_IXOTH) ? 't' : 'T';
 
@@ -319,14 +354,12 @@ int print_l(struct stat stats , char *filename, char * path){
     strftime(buf, sizeof(buf), format, time_struct);
 
     //symbolic link
-    if( perm[0] == 'l' )
+    if(perm[0] == 'l')
         readlink(path, slink, 64);
     char arrow[5]={' '};;
     
     if(slink[0] != '\0')
         strcat(arrow, " -> ");
-
-    
 
 	printf("%s %3d %s %s %7ld %s %s %s %s\n", perm, stats.st_nlink, usr->pw_name, grp->gr_name, stats.st_size, buf, filename, arrow, slink); 
 	return 0;

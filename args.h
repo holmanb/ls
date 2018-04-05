@@ -17,9 +17,9 @@ int get_args_iter(int argc, char *argv[], char *directory){
    
    // if length == 1, no args passed 
    if(argc == 1){
-	directory[0] = '.';
-	directory[1] = '\n';
-	return 0;
+        directory[0] = '.';
+        directory[1] = '\0';
+        return 0;
    }
     
    // For this simple program, the only non-flag is the distination to ls
@@ -29,6 +29,7 @@ int get_args_iter(int argc, char *argv[], char *directory){
 	// Searching for non-flag arg
 	if(argv[i][0] != '-'){
 		strcpy(directory, argv[i]); 	
+        strcat(directory,'\0');
 		directory_found=1;
 	}
 	// checking flags
@@ -38,20 +39,17 @@ int get_args_iter(int argc, char *argv[], char *directory){
 		while(character=argv[i][j++]){
 			if(character=='l'){
 				args |= ARG_l;
-			//	printf("flag -l found\n");
 			}else if(character=='a'){
 				args |= ARG_a;
-			//	printf("flag -a found\n");
 			}else if(character=='R'){
 				args |= ARG_R;
-			//	printf("flag -R found\n");
 			}	
 		}
 	}
    }
    if(!directory_found){
-	directory[0]='.';
-	directory[1]='\0';
+        directory[0]='.';
+        directory[1]='\0';
    }
    return args;
 } 
